@@ -11,8 +11,8 @@ WORKDIR /app
 COPY . .
 
 # Build the Go application as a static binary
-# Specify the path to your main.go file within the 'cmd' subdirectory
-RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-w -s" -o myapp ./cmd
+# Specify the path to your main.go file relative to the WORKDIR /app
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-w -s" -o myapp ./cmd/main.go
 
 # Stage 2: Create a minimal runtime image using scratch
 FROM scratch
