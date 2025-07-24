@@ -1,46 +1,30 @@
-# FROM golang:1.21 as builder
-
-# WORKDIR /app
-# COPY . .
-
-# RUN go mod init ext_authz && \
-# 	go build -o ext-authz ./cmd/main.go
-
-# FROM gcr.io/distroless/base-debian11
-
-# COPY --from=builder /app/ext-authz /ext-authz
-
-# EXPOSE 9000
-# ENTRYPOINT ["/ext-authz"]
-
-
 # Stage 1: Build the Go application
 FROM golang:1.24-alpine AS builder
 
+# Install necessary build tools (ca-certificates for HTTPS)
+RUN apk add --no-cache ca-certificates
+
+# Set the working directory to the project root
 WORKDIR /app
 
-# Copy go.mod and go.sum to download dependencies
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy the rest of the application source code
+# Copy the entire project into the container
 COPY . .
 
-# Build the Go application, statically linking dependencies
-# CGO_ENABLED=0 disables CGO, ensuring a static binary
-# GOOS=linux sets the target operating system for the binary
-# -a ensures all dependencies are statically linked
-# -installsuffix cgo is used with -a when CGO_ENABLED=0 to prevent issues
-# -ldflags "-s -w" removes debug information and symbol tables, reducing binary size
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags "-s -w" -o myapp .
+# Build the Go application as a static binary
+# Specify the path to your main.go file within the 'cmd' subdirectory
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags="-w -s" -o myapp ./cmd
 
-# Stage 2: Create the final, minimal image
+# Stage 2: Create a minimal runtime image using scratch
 FROM scratch
 
-WORKDIR /app
+# Set the working directory
+WORKDIR /
 
-# Copy only the compiled binary from the builder stage
-COPY --from=builder /app/ext-authz .
+# Copy the compiled binary from the builder stage
+COPY --from=builder /app/myapp /myapp
 
-# Set the entrypoint to run the compiled application
-ENTRYPOINT ["/app/ext-authz"]
+# If your application makes HTTPS requests, copy CA certificates
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Define the command to run the application
+ENTRYPOINT ["/myapp"]
