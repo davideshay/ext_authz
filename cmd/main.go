@@ -16,13 +16,15 @@ func findAccessTokenCookie(cookies []*http.Cookie) string {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Request: ", r.Header)
+	fmt.Println("Cookies:", r.Cookies())
 	token := findAccessTokenCookie(r.Cookies())
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	w.Header().Set("Authorization", "Bearer " + token)
+	w.Header().Set("Authorization", "Bearer "+token)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "{}")
